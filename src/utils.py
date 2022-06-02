@@ -266,3 +266,51 @@ def read_pheno_encodings(pheno_json_path, pheno_field_id):
     with open(pheno_json_path, "r") as f:
         field_encoding_dict = json.load(f)
     return field_encoding_dict[pheno_field_id]
+
+
+#########################
+# meta table formatting #
+#########################
+
+def get_exome_index(exome_file):
+    return pd.read_csv(exome_file, index_col=0).dropna(how="all").index
+
+
+def get_binarized_table_path(root_dir, pheno_type, pheno_cat, pheno_id, strategy):
+    pheno_basename = f"{pheno_id}_{strategy}.csv" if strategy else f"{pheno_id}.csv"
+    pheno_binarized_table_path = os.path.join(
+        root_dir, 
+        pheno_type, 
+        pheno_cat, 
+        "tables", 
+        pheno_basename
+        )
+    return pheno_binarized_table_path
+
+
+def read_binarized_table(table_path):
+    df = pd.read_csv(table_path, index_col=0)
+    df_columns = [c for c in list(df.columns) if c.startswith("binarized_")]
+    # checking to see that there are at least 2 binarized columns
+    if len(df_columns)<2:
+        print(f"Warning:: {table_path} was not binarized")
+    df = df.loc[:, df_columns]
+    return df
+
+
+def reindex_binarized_table1(pheno_df, pheno_id, exome_index):
+    pheno_df.columns = [f"Input_{pheno_id}_{c.split('_')[-1]}" for c in list(pheno_df.columns)]
+    return pheno_df.reindex(exome_index)
+
+
+def get_field_encodings(root_dir, pheno_type, pheno_cat, pheno_id):
+    pheno_json_path = get_pheno_encoding_filepath(root_dir, pheno_type, pheno_cat)
+    pheno_encodings = read_pheno_encodings(pheno_json_path, pheno_id)
+    if type(pheno_encodings) == dict:
+        pheno_encodings = {"-".join(v.replace(",", "").split()):k for k,v in pheno_encodings.items()}
+    return pheno_encodings
+
+
+def reindex_binarized_table2(pheno_df, pheno_id, pheno_encodings, exome_index):
+    pheno_df.columns = [f"Input_{pheno_id}_{pheno_encodings[c.split('_')[-1]]}" for c in list(pheno_df.columns)]
+    return pheno_df.reindex(exome_index)
