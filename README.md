@@ -23,7 +23,7 @@ Dropbox -> UK_BioBank -> BMI_project -> lifestyle.xlsx
 5. *Num_exome_samples_with_phenotype*: Denotes the number of exome samples present for the fields.
 
 # Download the bulk file that contains sample id to exome vcf mappings
-This file was downloaded as part of the download exomes from UKB pipeline as described here: https://github.com/deeprob/ukb_bulk_download.
+This file was downloaded as part of the download exomes from UKB pipeline as described here: https://github.com/deeprob/ukb-bulk-download.
 
 Location -> /data5/deepro/ukbiobank/download/download_bulk/data/ukb48799.csv
 
