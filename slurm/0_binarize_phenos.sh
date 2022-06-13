@@ -7,9 +7,9 @@
 #SBATCH --time=400:0:0
 #SBATCH --mem-per-cpu=4G
 #SBATCH --chdir /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/src
-#SBATCH -o /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/out_download_%a.log
-#SBATCH -e /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/err_download_%a.log
-#SBATCH --array 1-4
+#SBATCH -o /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/out_preprocess_%a.log
+#SBATCH -e /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/err_preprocess_%a.log
+#SBATCH --array 1
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!

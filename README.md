@@ -47,7 +47,9 @@ For field type, *continuous multiple*, since an individual might have multiple f
 For the numerical field types a) *integer* and b) *continuous*, we first generated the 25th and 75th quantiles from the field values using equal frequency binning. Then, we marked the 25th quantile as low and 75th quantile as high thresholds. Finally, for each of these fields, we created two one-hot encoded columns, 1) for the low threshold category where all individuals with field value lower than the 25th quantile were marked as 1 and higher were marked as 0 and 2) for the high threshold category where all individuals with field value higher than the 75th quantile were marked as 1 and lower were marked as 0. Thus, in the final meta table, each field of type *integer* or *continuous* will be represented by two columns, low and high.
 
 ### Categorical single field types
-For the ordinal field type, *categorical single*, individuals were characterized into two levels, low and high. The low level was defined as the field value(s) with the lowest rank(s) assigned to it by UKB such that this level has at least 10% of total number of samples in that particular field and excluding the field value with the highest rank. For example field 20407 has the following ranked field values:
+For *categorical single*, majority of the fields are **ordinal**. 
+
+For **ordinal** *categorical_single* fields, individuals were characterized into two levels, low and high. The low level was defined as the field value(s) with the lowest rank(s) assigned to it by UKB such that this level has at least 10% of total number of samples in that particular field and excluding the field value with the highest rank. For example field 20407 has the following ranked field values:
 
 *Never, Less-than-monthly, Monthly, Weekly, Daily-or-almost-daily*
 
@@ -56,6 +58,10 @@ Here, the lowest ranked field value is *Never*. We first define the low level as
 For the high level, we start with the highest ranked field value, check for the number of samples and only include those field values which were not previously included in the low level. Once the high level field values are defined, we again one hot encode each individual on the basis of whether their field value is present among the high level ranked field values. Thus, in the final meta table, each field of type *categorical single* will be represented by two columns, low and high.
 
 **Note**: There might be cases where the lowest (highest) ranked field value has greater than 90% samples. In that case the high (low) level will contain less than 10% of the total samples irrespective of the number of ranked field values included in that level. These cases can be filtered later based on end user requirements.
+
+*Categorical_single* fields where a single field encoding breaks down the ordinal status of that field were encoded by first removing that field value which broke ordinality and then characterizing the other field values into high and low levels as defined above. The removed field value was separately one-hot-encoded.
+
+*Categorical_single* fields which were not of type ordinal were one-hot-encoded i.e. each field value was separately converted to zeros or ones based on their absence or presence in an individual. It is described in the section below.
 
 ### Categorical multiple field types
 The *categorical multiple* fields were encoded in the true one-hot-encoding sense where each field value were separately converted to zeros or ones based on their absence or presence in an individual. For example field 6155, Vitamin and mineral supplements has field values:

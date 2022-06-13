@@ -30,7 +30,7 @@ conda activate ukbiobank
 
 echo `date` starting job on $HOSTNAME
 
-lifestyle="/data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/data/lifestyle.xlsx"
+lifestyle="/data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/data/lifestyle_v2.xlsx"
 exome="/data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/data/ukb48799.csv"
 pheno_info="/data5/deepro/ukbiobank/download/download_phenotypes/data"
 pheno_store="/data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/data"

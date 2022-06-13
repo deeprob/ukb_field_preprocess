@@ -130,7 +130,9 @@ def binarize_numericals(df, strategy="median", quantile_low=0.25, quantile_high=
     return df
 
 
-def decide_categorical_bins(ser, field_encodings):
+def get_ordinal_categorical_bins(df, field_encodings):
+    
+    ser = df["merged"]
 
     field_encodings_relevant = sorted([int(fe) for fe in field_encodings.keys() if int(fe)>=0])
     # case 1, if there are two types of relevant categories for this field,
@@ -167,45 +169,63 @@ def decide_categorical_bins(ser, field_encodings):
             binarized_high = ser.isin(fe_highs).astype(int)
             if (sum(binarized_high)/len(binarized_high)) > 0.1:
                 break
- 
-    return binarized_low, binarized_high, fe_low_val, fe_high_val
+    
+    # check if the number of samples in the lowest and highest bins 
+    # are less than 10% of the original number of samples
+    if (sum(binarized_low)/len(binarized_low)) < 0.1:
+        print(f"Warning:: lowest category has less than 10% samples for field id {df.columns[0]}")
+        print(f"Warning:: lowest category has {sum(binarized_low)} samples")
+
+    if (sum(binarized_high)/len(binarized_high)) < 0.1:
+        print(f"Warning:: highest category has less than 10% samples for field id {df.columns[0]}")
+        print(f"Warning:: highest category has {sum(binarized_high)} samples w/ or w/o exomes")
+
+    df[f"binarized_{fe_low_val}_low"] = binarized_low
+    df[f"binarized_{fe_high_val}_high"] = binarized_high
+
+    return df
 
 
-def binarize_categoricals(df, field_type, field_encodings):
+def get_ohe_type_encoding(df, field_encodings):
+    # only get the relevant field encoding values
+    field_encodings_relevant = sorted([int(fe) for fe in field_encodings.keys() if int(fe)>=0])
+    
+    # add "None of the above", encoding value "-7", here if it is present
+    if "-7" in field_encodings.keys():
+        field_encodings_relevant.append(-7)
 
+    for fe in field_encodings_relevant:
+        fe_ser = df.isin([fe]).any(axis=1).astype(int)
+        fe_val = field_encodings[str(fe)]
+        fe_val = "-".join(fe_val.replace(",", "").split())
+        df[f"binarized_{fe_val}"] = fe_ser    
+    return df
+
+
+def binarize_categoricals(df, field_type, field_encodings, ordinal_status, ohe_encodings, ordinal_encodings):
 
     if field_type == "categorical_single":
+
+        if not pd.isnull(ordinal_status):
+            # this categorical single phenotype is not ordinal
+            encoding_type = ordinal_status
+            if encoding_type == "O":
+                # one hot encoded type
+                df = get_ohe_type_encoding(df, field_encodings)
+
+            elif encoding_type == "B":
+                print("Warning:: Still working on it!!")
+                # read new field encodings for high low 
+                df = get_ordinal_categorical_bins(df, ordinal_encodings)
+                # read new field encodings for ohe type
+                df = get_ohe_type_encoding(df, ohe_encodings)
         
-        ser = df["merged"]
-        binarized_low, binarized_high, fe_low_val, fe_high_val = decide_categorical_bins(ser, field_encodings)
+        else:
+            df = get_ordinal_categorical_bins(df, field_encodings)
 
-        # check if the number of samples in the lowest and highest bins 
-        # are less than 10% of the original number of samples
-        if (sum(binarized_low)/len(binarized_low)) < 0.1:
-            print(f"Warning:: lowest category has less than 10% samples for field id {df.columns[0]}")
-            print(f"Warning:: lowest category has {sum(binarized_low)} samples")
-
-        if (sum(binarized_high)/len(binarized_high)) < 0.1:
-            print(f"Warning:: highest category has less than 10% samples for field id {df.columns[0]}")
-            print(f"Warning:: highest category has {sum(binarized_high)} samples w/ or w/o exomes")
-
-        df[f"binarized_{fe_low_val}_low"] = binarized_low
-        df[f"binarized_{fe_high_val}_high"] = binarized_high
-
-    if field_type == "categorical_multiple":
+    elif field_type == "categorical_multiple":
         if type(field_encodings) == dict:
-            # only get the relevant field encoding values
-            field_encodings_relevant = sorted([int(fe) for fe in field_encodings.keys() if int(fe)>=0])
-            
-            # add "None of the above", encoding value "-7", here if it is present
-            if "-7" in field_encodings.keys():
-                field_encodings_relevant.append(-7)
-
-            for fe in field_encodings_relevant:
-                fe_ser = df.isin([fe]).any(axis=1).astype(int)
-                fe_val = field_encodings[str(fe)]
-                fe_val = "-".join(fe_val.replace(",", "").split())
-                df[f"binarized_{fe_val}"] = fe_ser
+            df = get_ohe_type_encoding(df, field_encodings)
         else:
             print(f"Warning :: Field id {df.columns[0]} has incorrect field encoding type: {field_encodings}.")
             print(f"Warning :: It will not be binarized.")    
@@ -261,6 +281,23 @@ def get_pheno_encoding_filepath(root_dir, pheno_type, pheno_cat):
     return pheno_json_path
 
 
+def get_modified_pheno_encoding_filepath(root_dir, enc_type):
+    """
+    This function accepts
+    1) root_dir: where the sample to phenotype value table is stored under type -> category -> id hierarchy
+    2) pheno_type: the type which the field belongs to
+    3) pheno_cat: the category which the field belongs to 
+    It returns
+    the filepath of the json file that contains fields encodings of all fields 
+    that fall under the type and category specified
+    """
+    pheno_json_path = os.path.join(
+        root_dir, "modified_field_encodings", enc_type, f"field_encodings.json"
+        )
+    assert os.path.exists(pheno_json_path)
+    return pheno_json_path
+
+
 def read_pheno_encodings(pheno_json_path, pheno_field_id):
     pheno_field_id = str(pheno_field_id)
     with open(pheno_json_path, "r") as f:
@@ -299,8 +336,16 @@ def read_binarized_table(table_path):
 
 
 def reindex_binarized_table1(pheno_df, pheno_id, exome_index):
-    pheno_df.columns = [f"Input_{pheno_id}_{c.split('_')[-1]}" for c in list(pheno_df.columns)]
-    return pheno_df.reindex(exome_index)
+    pheno_df_old_columns = pheno_df.columns
+    pheno_df_new_columns = [f"Input_{pheno_id}_{c.split('_')[-1]}" for c in list(pheno_df_old_columns)]
+    # keeping track of old column names 
+    col_data = {
+        "old": pheno_df_old_columns,
+        "new": pheno_df_new_columns
+    }
+    col_df = pd.DataFrame(col_data)
+    pheno_df.columns = pheno_df_new_columns
+    return pheno_df.reindex(exome_index), col_df
 
 
 def get_field_encodings(root_dir, pheno_type, pheno_cat, pheno_id):
@@ -312,5 +357,38 @@ def get_field_encodings(root_dir, pheno_type, pheno_cat, pheno_id):
 
 
 def reindex_binarized_table2(pheno_df, pheno_id, pheno_encodings, exome_index):
-    pheno_df.columns = [f"Input_{pheno_id}_{pheno_encodings[c.split('_')[-1]]}" for c in list(pheno_df.columns)]
-    return pheno_df.reindex(exome_index)
+    pheno_df_old_columns = pheno_df.columns
+    pheno_df_new_columns = [f"Input_{pheno_id}_{pheno_encodings[c.split('_')[-1]]}" for c in list(pheno_df_old_columns)]
+    # keeping track of old column names 
+    col_data = {
+        "old": pheno_df_old_columns,
+        "new": pheno_df_new_columns
+    }
+    col_df = pd.DataFrame(col_data)
+    pheno_df.columns = pheno_df_new_columns    
+    return pheno_df.reindex(exome_index), col_df
+
+
+def get_modified_field_encodings(root_dir, enc_type, pheno_id):
+    pheno_json_path = get_modified_pheno_encoding_filepath(root_dir, enc_type)
+    pheno_encodings = read_pheno_encodings(pheno_json_path, pheno_id)
+    if type(pheno_encodings) == dict:
+        pheno_encodings = {"-".join(v.replace(",", "").split()):k for k,v in pheno_encodings.items()}
+    return pheno_encodings
+
+
+def reindex_binarized_table3(pheno_df, pheno_id, ohe_encodings, exome_index):
+    pheno_df_old_ohe_columns = [c for c in pheno_df.columns if all(x!=c.split("_")[-1] for x in ["low", "high"])]
+    pheno_df_new_ohe_columns = [f"Input_{pheno_id}_{ohe_encodings[c.split('_')[-1]]}" for c in list(pheno_df_old_ohe_columns)]
+    pheno_df_old_ordinal_columns = [c for c in pheno_df.columns if any(x==c.split("_")[-1] for x in ["low", "high"])]
+    pheno_df_new_ordinal_columns = [f"Input_{pheno_id}_{c.split('_')[-1]}" for c in list(pheno_df_old_ordinal_columns)]    
+    # keeping track of old column names 
+    pheno_df_old_columns = pheno_df_old_ohe_columns + pheno_df_old_ordinal_columns
+    pheno_df_new_columns = pheno_df_new_ohe_columns + pheno_df_new_ordinal_columns
+    col_data = {
+        "old": pheno_df_old_columns,
+        "new": pheno_df_new_columns
+    }
+    col_df = pd.DataFrame(col_data)
+    pheno_df = pheno_df.rename(columns = dict(zip(pheno_df_old_columns, pheno_df_new_columns)))    
+    return pheno_df.reindex(exome_index), col_df

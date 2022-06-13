@@ -9,7 +9,7 @@ import utils as ut
 
 def create_binarized_table(
     exome_df, 
-    pheno_info_root, pheno_type, pheno_cat, pheno_id, pheno_storage_root, 
+    pheno_info_root, pheno_type, pheno_cat, pheno_id, pheno_ordinal, pheno_storage_root, 
     strategy
     ):
     # get the pheno table path where sample to pheno info is stored
@@ -24,7 +24,15 @@ def create_binarized_table(
         # binarize categoricals
         pheno_encoding_path = ut.get_pheno_encoding_filepath(pheno_info_root, pheno_type, pheno_cat)
         pheno_encodings = ut.read_pheno_encodings(pheno_encoding_path, pheno_id)
-        pheno_binarized_df = ut.binarize_categoricals(pheno_merged_fields_df, pheno_type, pheno_encodings)
+        ohe_encodings,  ordinal_encodings = None, None
+        if pheno_ordinal == "B":
+            # this type of phenos have both ordinal and ohe type encodings example: field 4537: Work/job satisfaction
+            # a separately prepared modified field encodings json file is required for these
+            ohe_encoding_path = ut.get_modified_pheno_encoding_filepath(pheno_storage_root, "ohe")
+            ordinal_encoding_path = ut.get_modified_pheno_encoding_filepath(pheno_storage_root, "ordinal")
+            ohe_encodings = ut.read_pheno_encodings(ohe_encoding_path, pheno_id)
+            ordinal_encodings = ut.read_pheno_encodings(ordinal_encoding_path, pheno_id)
+        pheno_binarized_df = ut.binarize_categoricals(pheno_merged_fields_df, pheno_type, pheno_encodings, pheno_ordinal, ohe_encodings, ordinal_encodings)
     elif pheno_type in {"integer", "continuous"}:
         # merge pheno info values depending on the type of phenotype
         pheno_merged_fields_df = ut.merge_values_numerical(pheno_no_negative_vals_df)
@@ -48,9 +56,9 @@ def main(
     # from the phenos of interest, select the ones that fall under an user defined type
     phenos_of_interest_df = phenos_of_interest_df.loc[phenos_of_interest_df.Type.isin([pheno_type])]
     
-    pool_iter = [(exome_df, pheno_info_root, t, c, i, pheno_storage_root, strategy) for t,c,i in zip(
+    pool_iter = [(exome_df, pheno_info_root, t, c, i, o, pheno_storage_root, strategy) for t,c,i,o in zip(
         phenos_of_interest_df.Type, phenos_of_interest_df.Phenotype_group, 
-        phenos_of_interest_df.Phenotype_ID)]
+        phenos_of_interest_df.Phenotype_ID, phenos_of_interest_df.not_ordinal)]
 
     pool = mp.Pool(threads)
     pool.starmap(create_binarized_table, pool_iter)
@@ -66,7 +74,7 @@ if __name__ == "__main__":
         type=str, 
         help="""The file path of the manually prepared excel file that contains information about 
         the phenotypes' type (column name: Type), category (column name: Phenotype_group) and 
-        field id: (column name: Phenotype_ID)"""
+        field id: (column name: Phenotype_ID), field ordinality (column name: not_ordinal)"""
         )
     parser.add_argument(
         "id2exome_file", 
