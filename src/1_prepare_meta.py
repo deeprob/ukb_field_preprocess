@@ -55,11 +55,11 @@ def main(phenos_of_interest_file, exome_file, pheno_info_root, pheno_storage_roo
 	pool.join()
 
 	meta_df = pd.concat([pdf[0] for pdf in pheno_dfs], axis=1, join="inner")
-	meta_df_path = os.path.join(pheno_storage_root, "meta_pheno_table2.csv")
+	meta_df_path = os.path.join(pheno_storage_root, "meta_pheno_table3.csv")
 	meta_df.to_csv(meta_df_path)
 
 	meta_col_df = pd.concat([cdf[1] for cdf in pheno_dfs], axis=0)
-	meta_col_df_path = os.path.join(pheno_storage_root, "meta_pheno_table2_cols.csv")
+	meta_col_df_path = os.path.join(pheno_storage_root, "meta_pheno_table_cols3.csv")
 	meta_col_df.to_csv(meta_col_df_path, index=False)
 
 	return

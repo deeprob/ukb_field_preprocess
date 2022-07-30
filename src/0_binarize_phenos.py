@@ -37,7 +37,7 @@ def create_binarized_table(
         # merge pheno info values depending on the type of phenotype
         pheno_merged_fields_df = ut.merge_values_numerical(pheno_no_negative_vals_df)
         # binarize numerical pheno values based on the strategy selected 
-        pheno_binarized_df = ut.binarize_numericals(pheno_merged_fields_df, strategy=strategy)
+        pheno_binarized_df = ut.binarize_numericals(pheno_merged_fields_df, strategy=strategy, quantile_low=0.05, quantile_high=0.95)
     # keep pheno values only for the samples with exome data
     pheno_binarized_df = ut.filter_pheno_with_exomes(pheno_binarized_df, exome_df)
     # save the binarized table of the field in root -> type -> category dir 

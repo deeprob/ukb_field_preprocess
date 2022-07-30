@@ -9,7 +9,7 @@
 #SBATCH --chdir /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/src
 #SBATCH -o /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/out_preprocess_%a.log
 #SBATCH -e /data5/deepro/ukbiobank/preprocess/rarecomb_pheno_prepare/slurm/logs/err_preprocess_%a.log
-#SBATCH --array 1
+#SBATCH --array 1-2
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!

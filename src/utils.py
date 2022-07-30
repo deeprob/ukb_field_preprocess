@@ -193,13 +193,13 @@ def get_ohe_type_encoding(df, field_encodings):
     # add "None of the above", encoding value "-7", here if it is present
     if "-7" in field_encodings.keys():
         field_encodings_relevant.append(-7)
-
+    df_copy = df.copy()
     for fe in field_encodings_relevant:
         fe_ser = df.isin([fe]).any(axis=1).astype(int)
         fe_val = field_encodings[str(fe)]
         fe_val = "-".join(fe_val.replace(",", "").split())
-        df[f"binarized_{fe_val}"] = fe_ser    
-    return df
+        df_copy[f"binarized_{fe_val}"] = fe_ser    
+    return df_copy
 
 
 def binarize_categoricals(df, field_type, field_encodings, ordinal_status, ohe_encodings, ordinal_encodings):
@@ -215,6 +215,7 @@ def binarize_categoricals(df, field_type, field_encodings, ordinal_status, ohe_e
 
             elif encoding_type == "B":
                 print("Warning:: Still working on it!!")
+                print("Warning:: Encoding might be erroneous if ohe type field encodings have 1s!!")
                 # read new field encodings for high low 
                 df = get_ordinal_categorical_bins(df, ordinal_encodings)
                 # read new field encodings for ohe type
